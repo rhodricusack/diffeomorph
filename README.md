@@ -6,7 +6,7 @@ The technique is described in this paper:
 
 Stojanoski, B., & Cusack, R. (2014) Time to wave goodbye to phase-scrambling: Creating controlled scrambled images using diffeomorphic transformations. Journal of Vision, 14, 1-16
 
-https://www.cusacklab.org/%20http:/s3.amazonaws.com/cusacklab/html%20/pdfs/2014_stojanoski_cusack_wave_goodbye.pdf
+http://s3.amazonaws.com/cusacklab/html/pdfs/2014_stojanoski_cusack_wave_goodbye.pdf
 
 
 MIT License
