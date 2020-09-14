@@ -144,12 +144,14 @@ end;
 % make diffeomorphic warp field by adding random DCTs
 ph=rand(ncomp,ncomp,4)*2*pi;
 a=rand(ncomp,ncomp)*2*pi;
+b=rand(ncomp,ncomp)*2*pi; % different amplitudes for x and y DCT components
+
 Xn=zeros(imsz,imsz);
 Yn=zeros(imsz,imsz);
 for xc=1:ncomp
     for yc=1:ncomp
         Xn=Xn+a(xc,yc)*cos(xc*XI/imsz*2*pi+ph(xc,yc,1))*cos(yc*YI/imsz*2*pi+ph(xc,yc,2));
-        Yn=Yn+a(xc,yc)*cos(xc*XI/imsz*2*pi+ph(xc,yc,3))*cos(yc*YI/imsz*2*pi+ph(xc,yc,4));
+        Yn=Yn+b(xc,yc)*cos(xc*XI/imsz*2*pi+ph(xc,yc,3))*cos(yc*YI/imsz*2*pi+ph(xc,yc,4));
     end;
 end;
 % Normalise to RMS of warps in each direction
