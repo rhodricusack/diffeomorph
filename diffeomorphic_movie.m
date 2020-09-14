@@ -1,14 +1,16 @@
-function BS_RC_diffeomorphic_movie_v3()
+function diffeomorphic_movie()
 %===========================================================================
 %Create diffewarped images.
 %Number of morphed steps (images) is set by 'nsteps' with the amout of morphing held constant between images.
 %Amount of morphing is set by 'maxdistortion'
 %Each morphed images is saved as a jpeg.
 %In figure (11), each morphed images is also positioned along the outline of a circle
-%Please reference: Stojanoski, B., & Cusack, R (213). Time to wave goodbye to phase scrambling – creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
+%Please reference: Stojanoski, B., & Cusack, R (213). Time to wave goodbye to phase scrambling â€“ creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
 %Note: Mturk perceptual ratings of images are based on maxdistortion = 80; and nsteps = 20
 
-% Rhodri Cusack and Bobby Stojanoski July 2013
+% v0.0: Rhodri Cusack and Bobby Stojanoski July 2013
+% v0.1: Modified to give different amplitudes to x and y components of DCT. Note phases were randomised previously in any case, so this change may not be manifest in output.
+%       Thanks to Megan K Finnegan (Illinois) for highlighting this issue.
 %===========================================================================
 
 cd 'G:\Dropbox\MovieWarpingScript\'
