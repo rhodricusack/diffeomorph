@@ -1,32 +1,26 @@
-function BS_RC_diffeomorphic_movie_v3()
+function diffeomorphic_movie_warpshift()
 %===========================================================================
-%Create diffewarped images.
-%Number of morphed steps (images) is set by 'nsteps' with the amout of morphing held constant between images.
-%Amount of morphing is set by 'maxdistortion'
-%Each morphed images is saved as a jpeg.
-%In figure (11), each morphed images is also positioned along the outline of a circle
-%Please reference: Stojanoski, B., & Cusack, R (213). Time to wave goodbye to phase scrambling – creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
-%Note: Mturk perceptual ratings of images are based on maxdistortion = 80; and nsteps = 20
+% Create diffeowarped movies.
+%  Applies a gradually drifting warp field to each frame, achieved by the 
+%  phase of the components taking a random walk.
+%  Will operate on all .mov files in the directory defined by "moviepath"
+%Please reference: Stojanoski, B., & Cusack, R (2013). Time to wave goodbye to phase scrambling – creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
 
+% =======================
 % Rhodri Cusack and Bobby Stojanoski July 2013
-%===========================================================================
 % Rhodri Cusack 2020-10-12: adapted to allow gently drifting warp fields - phases take random walk
-
-cd 'G:\Dropbox\MovieWarpingScript\'
 
 maxdistortion=60; % changes max amount of distortion
 nsteps=20; % number of steps
 ncomp=10;
 %imsz= 1000; % size of output images (bigger or equal to 2 x input image)
-phasedrift=0.1; % phase drift by randn(0,phasedrift) each second
+phasedrift=pi/8; % phase drift by randn(0,phasedrift) each second
 
-picpath='G:\Dropbox\MovieWarpingScript\'; %'D:\Bobby\Experiments\fMRI\VSTM_hierarchy\Images\AllImages';
-outpicpath='G:\Dropbox\MovieWarpingScript\WarpedMovie'; %'D:\Bobby\Experiments\fMRI\VSTM_hierarchy\Images\WarpedImages1_80';
-outvidpath='G:\Dropbox\MovieWarpingScript\WarpedMovie_Vid';
-imgtype='png'; % stills for now, you'll need to use VideoWriter to write video  
+moviepath='/home/rhodricusack/diffeomorph/towarp'; 
+outvidpath='/home/rhodricusack/diffeomorph/warped';
 
-% But read in .mov
-fns=dir(fullfile(picpath,'*.mov'));
+% Read in .mov
+fns=dir(fullfile(moviepath,'*.mov'));
 figure(10);
 
 
@@ -35,25 +29,31 @@ imsz=1280+4*maxdistortion;
 % Generate disortion field for all frames - try keeping it fixed to start
 % Only need one not 3 distortion fields, as no longer need the
 % continuous circle
+tic
 [cx, cy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp);
-[YI, XI]=meshgrid(1:imsz,1:imsz);
-cy=YI+cy;
-cx=XI+cx;
-mask=(cx<1) | (cx>imsz) | (cy<1) | (cy>imsz) ;
-cx(mask)=1;
-cy(mask)=1;
+[cx, cy]=postprocess_diffeo(imsz,cx,cy);
+
+% In one second we'll be here
+% Alter phase
+ph=ph+phasedrift*randn(ncomp,ncomp,4);
+
+[nextcx, nextcy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp,a,b,ph);
+[nextcx, nextcy]=postprocess_diffeo(imsz,nextcx,nextcy);
+
+fprintf('Time to create distortion field: %f s\n',toc)
+
 
 
 
 for i=1:length(fns) %This is the number of objects in the directory
-    M=VideoReader(fullfile(picpath,fns(i).name));
+    M=VideoReader(fullfile(moviepath,fns(i).name));
     z=0;
     v=VideoWriter((fullfile(outvidpath,sprintf('Vid_%02d',i)))); 
     outframenum=0;
     v.FrameRate=M.FrameRate; 
     open(v);
     
-    lastsecs=0;
+    oldsecs=0;
     while M.hasFrame() %to pass over
         z=z+1;
         outframenum=outframenum+1;
@@ -86,57 +86,62 @@ for i=1:length(fns) %This is the number of objects in the directory
         Im(:,y1+Psz(2)+1:end,:)=Im(:,(y1+Psz(2):-1:Psz(2)+1),:);
 
         
+        % Interpolate between now and next distortion field in 1 second
+        f=z/v.FrameRate;
+        f=f-floor(f);
+        cyi=(1-f)*cy + f*nextcy;
+        cxi=(1-f)*cx + f*nextcx;
+        
         % Start off with undisorted image
         interpIm=Im;
         for j=1:nsteps %This is the number of steps - Total number of warps is nsteps * quadrant
-            interpIm(:,:,1)=interp2(double(interpIm(:,:,1)),cy,cx);
-            interpIm(:,:,2)=interp2(double(interpIm(:,:,2)),cy,cx);
-            interpIm(:,:,3)=interp2(double(interpIm(:,:,3)),cy,cx);
+            interpIm(:,:,1)=interp2(double(interpIm(:,:,1)),cyi,cxi);
+            interpIm(:,:,2)=interp2(double(interpIm(:,:,2)),cyi,cxi);
+            interpIm(:,:,3)=interp2(double(interpIm(:,:,3)),cyi,cxi);
         end;
         
         % Trim down again
         interpIm=interpIm((x1+1):(x1+Psz(1)),(y1+1):(y1+Psz(2)),:);
-        %imwrite(uint8(interpIm),fullfile(outpicpath,sprintf('Im_%02d_%02d.%s',i,z,imgtype)),imgtype);
         movframe=uint8(interpIm);
         writeVideo(v,movframe);
 
-	% Drift phase each second
-	if phasedrift>0
-		newsecs=floor(z/V.FrameRate)
-		if newsecs~=oldsecs
-			oldsecs=newsecs
-			ph=ph+phasedrift*randn(ncomp,ncomp,4);
-			[cx, cy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp,a,b,ph);
-		end;
-	end;
-    end;
+        % Warp field is updated each second, by drifting the phase
+        if phasedrift>0
+            newsecs=floor(z/v.FrameRate);
+            if newsecs~=oldsecs
+                fprintf('Secs of movie processed: %d\n',newsecs)
+                oldsecs=newsecs;
+                % Alter phase
+                ph=ph+phasedrift*randn(ncomp,ncomp,4);
+                
+                % Create new distortion field
+                cx=nextcx;
+                cy=nextcy;
+                [nextcx, nextcy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp,a,b,ph);
+                [nextcx, nextcy]=postprocess_diffeo(imsz,nextcx,nextcy);
+            end
+        end
+    end
     
     close(v); %moved from below
-    
-    
-    
-    %         end;
-    %     end;
-    
-    %I think this is where we will want to write out the movie before we
-    %move onto the next movie clip
-    %M=VideoReader(fullfile(picpath,fns(i).name));
-    %outframenum=0;
-    %v=VideoWriter((fullfile(outvidpath,sprintf('Vid_%02d',i)))); 
-    %open(v);
-    %v.FrameRate=M.FrameRate; 
-    %while M.hasFrame() %to load into the video
-        %outframenum=outframenum+1
-        %movframe=imread(fullfile(outpicpath,sprintf('Im_%02d_%02d.%s',i,outframenum,imgtype)));
-        %writeVideo(v,movframe);
-    %end;
-    %close(v);
+  
 end
 end
 
 
+% post process diffeo
+function [cx,cy]=postprocess_diffeo(imsz,cx,cy)
 
-% Distortion field
+[YI, XI]=meshgrid(1:imsz,1:imsz);
+cy=YI+cy;
+cx=XI+cx;
+mask=(cx<1) | (cx>imsz) | (cy<1) | (cy>imsz) ;
+cx(mask)=1;
+cy(mask)=1;
+end
+
+
+% Create distortion field
 % inputs
 %  imsz - size of visual image
 %  maxdistortion - max amount of displacement of any pixel after nsteps
