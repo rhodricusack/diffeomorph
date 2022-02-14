@@ -4,7 +4,7 @@ function diffeomorphic_movie_warpshift()
 %  Applies a gradually drifting warp field to each frame, achieved by the 
 %  phase of the components taking a random walk.
 %  Will operate on all .mov files in the directory defined by "moviepath"
-%Please reference: Stojanoski, B., & Cusack, R (2013). Time to wave goodbye to phase scrambling – creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
+%Please reference: Stojanoski, B., & Cusack, R (2013). Time to wave goodbye to phase scrambling ï¿½ creating unrecognizable control stimuli using a diffeomorphic transform.  Abstract Vision Science Society
 
 % =======================
 % Rhodri Cusack and Bobby Stojanoski July 2013
@@ -16,8 +16,8 @@ ncomp=10;
 %imsz= 1000; % size of output images (bigger or equal to 2 x input image)
 phasedrift=pi/8; % phase drift by randn(0,phasedrift) each second
 
-moviepath='/home/rhodricusack/diffeomorph/towarp'; 
-outvidpath='/home/rhodricusack/diffeomorph/warped';
+moviepath='/home/clionaodoherty/diffeomorph/towarp'; 
+outvidpath='/home/clionaodoherty/diffeomorph/warped';
 
 % Read in .mov
 fns=dir(fullfile(moviepath,'*.mov'));
@@ -33,7 +33,7 @@ tic
 [cx, cy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp);
 [cx, cy]=postprocess_diffeo(imsz,cx,cy);
 
-% In one second we'll be here
+% In one second well be here
 % Alter phase
 ph=ph+phasedrift*randn(ncomp,ncomp,4);
 
@@ -85,6 +85,22 @@ for i=1:length(fns) %This is the number of objects in the directory
         Im(:,1:y1,:)=Im(:,(y1+1+y1):-1:(y1+2),:);
         Im(:,y1+Psz(2)+1:end,:)=Im(:,(y1+Psz(2):-1:Psz(2)+1),:);
 
+        % Warp field is updated each second, by drifting the phase
+        if phasedrift>0
+            newsecs=floor(z/v.FrameRate);
+            if newsecs~=oldsecs
+                fprintf('Secs of movie processed: %d\n',newsecs)
+                oldsecs=newsecs;
+                % Alter phase
+                ph=ph+phasedrift*randn(ncomp,ncomp,4);
+                
+                % Create new distortion field
+                cx=nextcx;
+                cy=nextcy;
+                [nextcx, nextcy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp,a,b,ph);
+                [nextcx, nextcy]=postprocess_diffeo(imsz,nextcx,nextcy);
+            end
+        end
         
         % Interpolate between now and next distortion field in 1 second
         f=z/v.FrameRate;
@@ -105,22 +121,6 @@ for i=1:length(fns) %This is the number of objects in the directory
         movframe=uint8(interpIm);
         writeVideo(v,movframe);
 
-        % Warp field is updated each second, by drifting the phase
-        if phasedrift>0
-            newsecs=floor(z/v.FrameRate);
-            if newsecs~=oldsecs
-                fprintf('Secs of movie processed: %d\n',newsecs)
-                oldsecs=newsecs;
-                % Alter phase
-                ph=ph+phasedrift*randn(ncomp,ncomp,4);
-                
-                % Create new distortion field
-                cx=nextcx;
-                cy=nextcy;
-                [nextcx, nextcy, a, b, ph]=getdiffeo(imsz,maxdistortion,nsteps,ncomp,a,b,ph);
-                [nextcx, nextcy]=postprocess_diffeo(imsz,nextcx,nextcy);
-            end
-        end
     end
     
     close(v); %moved from below
